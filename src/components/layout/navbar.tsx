@@ -1,16 +1,14 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Home, User, LogOut, Users } from 'lucide-react'
 
 export function Navbar() {
   const router = useRouter()
   const pathname = usePathname()
-  const supabase = createClient()
 
   async function handleLogout() {
-    await supabase.auth.signOut()
+    await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
     router.refresh()
   }

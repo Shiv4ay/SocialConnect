@@ -21,7 +21,7 @@ export function CommentList({ postId, initialComments, currentUser, onCommentAdd
   const [newComment, setNewComment] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function submitComment(e: React.FormEvent) {
+  async function submitComment(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!newComment.trim()) return
     setLoading(true)
@@ -96,7 +96,7 @@ export function CommentList({ postId, initialComments, currentUser, onCommentAdd
                       {comment.author?.first_name} {comment.author?.last_name}
                     </Link>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400">
+                      <span suppressHydrationWarning className="text-xs text-slate-400">
                         {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
                       </span>
                       {comment.user_id === currentUser.id && (

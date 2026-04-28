@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Post, Profile, Comment } from '@/types'
 import { formatDistanceToNow } from 'date-fns'
 import { CommentList } from '@/components/comments/comment-list'
+import { toast } from 'sonner'
 
 interface PostCardProps {
   post: Post
@@ -41,10 +42,10 @@ export function PostCard({ post, currentUser, onDelete, initiallyShowComments = 
         setLikeCount(c => liked ? c - 1 : c + 1)
       } else {
         const err = await res.json()
-        alert(`Failed to ${method === 'DELETE' ? 'unlike' : 'like'}: ${err.error || 'Unknown error'}`)
+        toast.error(err.error || `Failed to ${liked ? 'unlike' : 'like'} post`)
       }
-    } catch (e) {
-      alert('Network error')
+    } catch {
+      toast.error('Network error — please try again')
     }
     setLoading(false)
   }
@@ -52,7 +53,12 @@ export function PostCard({ post, currentUser, onDelete, initiallyShowComments = 
   async function handleDelete() {
     if (!confirm('Delete this post?')) return
     const res = await fetch(`/api/posts/${post.id}`, { method: 'DELETE' })
-    if (res.ok) onDelete?.(post.id)
+    if (res.ok) {
+      onDelete?.(post.id)
+      toast.success('Post deleted')
+    } else {
+      toast.error('Failed to delete post')
+    }
   }
 
   async function toggleComments() {
@@ -62,10 +68,16 @@ export function PostCard({ post, currentUser, onDelete, initiallyShowComments = 
     }
     setShowComments(true)
     if (!commentsLoaded) {
-      const res = await fetch(`/api/posts/${post.id}/comments`)
-      const data = await res.json()
-      setComments(data.data)
-      setCommentsLoaded(true)
+      try {
+        const res = await fetch(`/api/posts/${post.id}/comments`)
+        if (!res.ok) throw new Error('Failed to load comments')
+        const data = await res.json()
+        setComments(data.data ?? [])
+        setCommentsLoaded(true)
+      } catch {
+        toast.error('Could not load comments')
+        setShowComments(false)
+      }
     }
   }
 
@@ -89,7 +101,7 @@ export function PostCard({ post, currentUser, onDelete, initiallyShowComments = 
               </Link>
               <span className="ml-1.5 text-xs text-slate-400">@{author?.username}</span>
             </div>
-            <span className="shrink-0 text-xs text-slate-400">
+            <span suppressHydrationWarning className="shrink-0 text-xs text-slate-400">
               {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
             </span>
           </div>

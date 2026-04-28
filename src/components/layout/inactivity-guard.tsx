@@ -6,7 +6,7 @@ const TIMEOUT_MS = 15 * 60 * 1000 // 15 minutes
 
 export function InactivityGuard() {
   const router = useRouter()
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const signOutAndRedirect = useCallback(async () => {
     try {

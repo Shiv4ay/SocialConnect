@@ -61,15 +61,25 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data, error } = await supabase
+  // Check ownership first (SELECT policy only covers is_active=true rows)
+  const { data: existing } = await supabase
+    .from('posts')
+    .select('id')
+    .eq('id', postId)
+    .eq('author_id', user.id)
+    .eq('is_active', true)
+    .single()
+
+  if (!existing) return NextResponse.json({ error: 'Post not found or not authorized' }, { status: 404 })
+
+  // Soft-delete without .select() to avoid the RLS SELECT-after-UPDATE conflict
+  const { error } = await supabase
     .from('posts')
     .update({ is_active: false })
     .eq('id', postId)
     .eq('author_id', user.id)
-    .select('id')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!data || data.length === 0) return NextResponse.json({ error: 'Post not found or not authorized' }, { status: 404 })
   return NextResponse.json({ message: 'Post deleted' })
 }
 

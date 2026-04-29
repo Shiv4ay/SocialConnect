@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { updatePostSchema, fieldErrors } from '@/lib/validations'
 
 type Params = { params: Promise<{ postId: string }> }
@@ -61,23 +62,22 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Check ownership first (SELECT policy only covers is_active=true rows)
-  const { data: existing } = await supabase
+  // Use admin client to bypass RLS — ownership is enforced manually below
+  const admin = createAdminClient()
+
+  const { data: post } = await admin
     .from('posts')
-    .select('id')
+    .select('id, author_id')
     .eq('id', postId)
-    .eq('author_id', user.id)
-    .eq('is_active', true)
     .single()
 
-  if (!existing) return NextResponse.json({ error: 'Post not found or not authorized' }, { status: 404 })
+  if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+  if (post.author_id !== user.id) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
 
-  // Soft-delete without .select() to avoid the RLS SELECT-after-UPDATE conflict
-  const { error } = await supabase
+  const { error } = await admin
     .from('posts')
     .update({ is_active: false })
     .eq('id', postId)
-    .eq('author_id', user.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ message: 'Post deleted' })
